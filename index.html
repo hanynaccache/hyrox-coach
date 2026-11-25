@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>HYROX & Rehab Coach</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0f172a" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; padding-bottom: 90px; }
+    .tab-active { border-bottom: 3px solid #10b981; color: #10b981; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Top Header -->
+  <header class="sticky top-0 z-30 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 py-3 flex justify-between items-center">
+    <div>
+      <h1 class="text-lg font-bold text-emerald-400">HYROX & Rehab Coach</h1>
+      <p id="headerDate" class="text-xs text-slate-400"></p>
+    </div>
+    <button onclick="openSettings()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700">
+      ⚙️ Setup
+    </button>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="sticky top-[57px] z-20 bg-slate-900 border-b border-slate-800 grid grid-cols-3 text-center text-sm font-semibold">
+    <button onclick="switchTab('plan')" id="tab-plan" class="py-3 tab-active">1. Plan</button>
+    <button onclick="switchTab('workout')" id="tab-workout" class="py-3 text-slate-400">2. Workout</button>
+    <button onclick="switchTab('finish')" id="tab-finish" class="py-3 text-slate-400">3. Finish & AI</button>
+  </nav>
+
+  <!-- TAB 1: PRE-WORKOUT CHECK-IN & PLAN -->
+  <main id="view-plan" class="p-4 space-y-4 max-w-xl mx-auto">
+    <div class="bg-slate-800/80 rounded-xl p-4 border border-slate-700 space-y-4">
+      <h2 class="font-bold text-base text-white">Pre-Workout Check-In</h2>
+
+      <div>
+        <div class="flex justify-between text-sm mb-1">
+          <label>Ankle Pain (/10)</label>
+          <span id="val-preAnkle" class="font-bold text-emerald-400">2</span>
+        </div>
+        <input type="range" id="preAnkle" min="0" max="10" value="2" oninput="document.getElementById('val-preAnkle').innerText=this.value" class="w-full accent-emerald-500">
+      </div>
+
+      <div>
+        <div class="flex justify-between text-sm mb-1">
+          <label>Lower Back L1/L2 (/10)</label>
+          <span id="val-preBack" class="font-bold text-emerald-400">1</span>
+        </div>
+        <input type="range" id="preBack" min="0" max="10" value="1" oninput="document.getElementById('val-preBack').innerText=this.value" class="w-full accent-emerald-500">
+      </div>
+
+      <div class="flex items-center justify-between pt-1">
+        <label class="text-sm">Morning ankle stiffness &gt; 15-20 mins?</label>
+        <select id="preStiffness" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm">
+          <option value="No">No (&lt;15m)</option>
+          <option value="Yes">Yes (&gt;20m)</option>
+        </select>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <label class="text-sm">Equipment</label>
+        <select id="preLocation" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm">
+          <option value="Cairo Home Gym">Cairo Home Gym</option>
+          <option value="Hotel / Travel Gym">Hotel / Travel Gym</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="text-sm block mb-1">Session Request / Notes (Optional)</label>
+        <input type="text" id="preNotes" placeholder="e.g., Day 4, or feeling slightly fatigued" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white">
+      </div>
+
+      <button onclick="generateWorkout()" id="btnGenerate" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] transition text-white font-bold py-3 rounded-xl shadow-lg">
+        Sync Sheet &amp; Generate Today's Session
+      </button>
+    </div>
+
+    <div id="planOverview" class="hidden bg-slate-800/80 rounded-xl p-4 border border-slate-700 space-y-3">
+      <div class="flex items-center justify-between">
+        <span id="badgeWatch" class="bg-blue-900/60 text-blue-300 border border-blue-700 text-xs font-bold px-2.5 py-1 rounded-full"></span>
+        <span id="badgeCap" class="text-xs text-slate-400 font-medium"></span>
+      </div>
+      <h3 id="planTitle" class="text-lg font-bold text-white"></h3>
+      <p id="planIntro" class="text-sm text-slate-300"></p>
+      <div class="bg-amber-950/40 border border-amber-800/60 rounded-lg p-3">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">Coach's Rules for Today</h4>
+        <ul id="planRules" class="list-disc list-inside text-xs text-amber-100 space-y-1"></ul>
+      </div>
+      <button onclick="switchTab('workout')" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-lg text-sm">
+        Go to Workout Player →
+      </button>
+    </div>
+  </main>
+
+  <!-- TAB 2: WORKOUT PLAYER -->
+  <main id="view-workout" class="hidden p-4 space-y-5 max-w-xl mx-auto">
+    <div id="noWorkoutMsg" class="text-center py-12 text-slate-400 text-sm">
+      Generate a workout in Tab 1 first!
+    </div>
+
+    <div id="workoutContent" class="hidden space-y-5">
+      <!-- Rehab & Warmup -->
+      <section class="bg-slate-800/70 rounded-xl p-4 border border-slate-700 space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="font-bold text-emerald-400">Rehab &amp; Warm-Up</h3>
+          <button onclick="startTimer(45, '45s Rehab Hold')" class="bg-slate-700 px-2.5 py-1 rounded text-xs font-semibold">⏱ 45s Timer</button>
+        </div>
+        <div id="rehabList" class="space-y-2"></div>
+      </section>
+
+      <!-- Strength Block -->
+      <section class="space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="font-bold text-emerald-400">Strength Block</h3>
+          <span class="text-xs text-slate-400">Tap ✓ to log &amp; start 90s rest</span>
+        </div>
+        <div id="strengthList" class="space-y-3"></div>
+      </section>
+
+      <!-- Engine / Finisher Block -->
+      <section id="engineSection" class="bg-slate-800/70 rounded-xl p-4 border border-slate-700 space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="font-bold text-orange-400">Engine / Finisher</h3>
+          <span id="engineCapBadge" class="text-xs bg-orange-950 text-orange-300 px-2 py-0.5 rounded border border-orange-800"></span>
+        </div>
+        <div id="engineDetails" class="space-y-2 text-sm text-slate-200"></div>
+        <!-- Hard Cap / EMOM Timer -->
+        <div class="bg-slate-900 rounded-xl p-3 border border-slate-700 flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-400">Hard-Cap Clock</div>
+            <div id="engineClock" class="text-2xl font-mono font-bold text-orange-400">00:00</div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="toggleEngineTimer()" id="btnEngineTimer" class="bg-orange-600 hover:bg-orange-500 px-4 py-2 rounded-lg text-xs font-bold text-white">Start</button>
+            <button onclick="resetEngineTimer()" class="bg-slate-700 px-3 py-2 rounded-lg text-xs font-bold">Reset</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cool Down -->
+      <section class="bg-slate-800/70 rounded-xl p-4 border border-slate-700 space-y-2">
+        <h3 class="font-bold text-blue-400">Cool-Down</h3>
+        <div id="cooldownList" class="space-y-2"></div>
+      </section>
+
+      <button onclick="switchTab('finish')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow-lg">
+        Proceed to Post-Workout Wrap-Up →
+      </button>
+    </div>
+  </main>
+
+  <!-- TAB 3: FINISH, CAMERA & AI COACH -->
+  <main id="view-finish" class="hidden p-4 space-y-4 max-w-xl mx-auto">
+    <div class="bg-slate-800/80 rounded-xl p-4 border border-slate-700 space-y-4">
+      <h2 class="font-bold text-base text-white">Post-Workout Check-In</h2>
+
+      <div>
+        <div class="flex justify-between text-sm mb-1"><label>Session RPE (/10)</label><span id="val-postRpe" class="font-bold text-emerald-400">7</span></div>
+        <input type="range" id="postRpe" min="1" max="10" value="7" oninput="document.getElementById('val-postRpe').innerText=this.value" class="w-full accent-emerald-500">
+      </div>
+      <div>
+        <div class="flex justify-between text-sm mb-1"><label>Post-Workout Back L1/L2 (/10)</label><span id="val-postBack" class="font-bold text-emerald-400">1</span></div>
+        <input type="range" id="postBack" min="0" max="10" value="1" oninput="document.getElementById('val-postBack').innerText=this.value" class="w-full accent-emerald-500">
+      </div>
+      <div>
+        <div class="flex justify-between text-sm mb-1"><label>Post-Workout Ankle (/10)</label><span id="val-postAnkle" class="font-bold text-emerald-400">2</span></div>
+        <input type="range" id="postAnkle" min="0" max="10" value="2" oninput="document.getElementById('val-postAnkle').innerText=this.value" class="w-full accent-emerald-500">
+      </div>
+
+      <!-- Image Uploads -->
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <label class="bg-slate-900 border border-slate-600 rounded-xl p-3 text-center cursor-pointer hover:border-emerald-500">
+          <div class="text-xl mb-1">⌚</div>
+          <div class="text-xs font-semibold text-slate-200">Zepp Screenshot</div>
+          <input type="file" accept="image/*" onchange="handleImageUpload(event, 'zepp')" class="hidden">
+          <img id="preview-zepp" class="hidden mt-2 rounded max-h-24 mx-auto border border-slate-700">
+        </label>
+
+        <label class="bg-slate-900 border border-slate-600 rounded-xl p-3 text-center cursor-pointer hover:border-emerald-500">
+          <div class="text-xl mb-1">📷</div>
+          <div class="text-xs font-semibold text-slate-200">Snap Erg Monitor</div>
+          <input type="file" accept="image/*" capture="environment" onchange="handleImageUpload(event, 'erg')" class="hidden">
+          <img id="preview-erg" class="hidden mt-2 rounded max-h-24 mx-auto border border-slate-700">
+        </label>
+      </div>
+
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">Logged Strength Sets (<span id="loggedCount">0</span>)</label>
+        <div id="loggedSummary" class="text-xs text-slate-300 bg-slate-900 p-2.5 rounded-lg max-h-28 overflow-y-auto border border-slate-700">No sets logged yet.</div>
+      </div>
+
+      <button onclick="finishAndAnalyze()" id="btnFinish" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow-lg">
+        Finish, Sync to Sheet &amp; Analyze
+      </button>
+    </div>
+
+    <!-- AI Review Output -->
+    <div id="aiReviewBox" class="hidden bg-slate-800/80 rounded-xl p-4 border border-emerald-700/60 space-y-3">
+      <h3 class="font-bold text-emerald-400">Coach's Post-Workout Analysis</h3>
+      <div id="aiReviewText" class="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed"></div>
+    </div>
+
+    <!-- Interactive Coach Chat -->
+    <div class="bg-slate-800/80 rounded-xl p-4 border border-slate-700 space-y-3">
+      <h3 class="font-bold text-sm text-white">Interactive Coach Chat</h3>
+      <div id="chatHistory" class="space-y-2 max-h-60 overflow-y-auto text-sm"></div>
+      <div class="flex gap-2">
+        <input type="text" id="chatInput" placeholder="Ask your coach anything..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white">
+        <button onclick="sendChat()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-sm font-bold text-white">Send</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Floating Rest Timer Bar -->
+  <div id="restTimerBar" class="hidden fixed bottom-0 left-0 right-0 bg-slate-900/95 border-t border-emerald-600 px-4 py-3 flex items-center justify-between z-40 shadow-2xl">
+    <div>
+      <div id="restTimerLabel" class="text-xs text-emerald-400 font-bold uppercase">Rest Timer</div>
+      <div id="restTimerClock" class="text-2xl font-mono font-bold text-white">01:30</div>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="addRestTime(30)" class="bg-slate-800 border border-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold">+30s</button>
+      <button onclick="stopRestTimer()" class="bg-red-900/70 border border-red-700 text-red-200 px-3 py-1.5 rounded-lg text-xs font-bold">Dismiss</button>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-md space-y-4">
+      <h2 class="text-lg font-bold text-white">App Setup</h2>
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">Gemini API Key</label>
+        <input type="password" id="cfgGeminiKey" placeholder="AIzaSy..." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">Google Apps Script Web App URL</label>
+        <input type="text" id="cfgScriptUrl" placeholder="https://script.google.com/macros/s/..." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">Secret Token</label>
+        <input type="text" id="cfgToken" value="HanyHyrox2026" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">Gemini Model</label>
+        <input type="text" id="cfgModel" value="gemini-2.5-flash" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="saveSettings()" class="flex-1 bg-emerald-600 py-2.5 rounded-lg font-bold text-sm">Save</button>
+        <button onclick="closeSettings()" class="bg-slate-700 px-4 py-2.5 rounded-lg font-bold text-sm">Close</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(console.error);
+}
+
+const MASTER_PROMPT = `Role & Coaching Persona: Act as Hany's dedicated HYROX Strength, Conditioning, and Rehab Coach. Be direct, structured, data-driven, and strict on safety rules.
+Athlete Profile: Hany (40yo male, New Cairo, Egypt, 4+ yrs CrossFit). Goal: HYROX aerobic engine + strength maintenance + ankle rehab without aggravating L1/L2 lower back.
+Schedule: Training week starts SUNDAY (Sunday-Saturday). 3-4 sessions/week. Cap: 75-80 mins max. Time caps on AMRAP/EMOM are non-negotiable.
+Injury Guardrails:
+1. Ankle (Dorsiflexion-sensitive tendonitis): No running/jumping/plyos until single-leg loading holds at 0-2/10. 24-Hour Rule: if pain >=3/10 or morning stiffness >15-20m, scale back. Keep feet flat on Leg Press/Assault Bike; avoid toe push on SkiErg.
+2. Lower Back (L1/L2): Avoid heavy spinal loading & hyperextension. Stop Leg Press before tailbone peels; use chest-supported rows; swap V-Ups for planks if L1/L2 tightens.
+Cairo Home Gym: Concept2 RowErg, SkiErg, Assault Bike, Leg Press, Leg Extension, Leg Curl, Lat Pulldown, Incline Chest Press, Flat Barbell Bench, Cable stack, DBs (kg & lbs), bands, foam pad.
+Rehab Protocol: Banded Dorsiflexion Eccentrics (3x12), Toe Yoga (3x15), Single-Leg Stance on foam pad (3x45s), Standing Calf Raises w/ tennis ball (3x12), Single-Leg Hip Thrusts (3x10/leg).`;
+
+let currentPlan = null;
+let loggedSets = [];
+let images = { zepp: null, erg: null };
+let sheetContext = { logs: [], sessions: [] };
+let chatMsgs = [];
+
+// Init
+const today = new Date();
+const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+document.getElementById('headerDate').innerText = `${days[today.getDay()]}, ${today.toISOString().split('T')[0]}`;
+
+if (!localStorage.getItem('geminiKey') || !localStorage.getItem('scriptUrl')) {
+  openSettings();
+}
+
+function openSettings() {
+  document.getElementById('cfgGeminiKey').value = localStorage.getItem('geminiKey') || '';
+  document.getElementById('cfgScriptUrl').value = localStorage.getItem('scriptUrl') || '';
+  document.getElementById('cfgToken').value = localStorage.getItem('secretToken') || 'HanyHyrox2026';
+  document.getElementById('cfgModel').value = localStorage.getItem('geminiModel') || 'gemini-2.5-flash';
+  document.getElementById('settingsModal').classList.remove('hidden');
+}
+function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
+function saveSettings() {
+  localStorage.setItem('geminiKey', document.getElementById('cfgGeminiKey').value.trim());
+  localStorage.setItem('scriptUrl', document.getElementById('cfgScriptUrl').value.trim());
+  localStorage.setItem('secretToken', document.getElementById('cfgToken').value.trim());
+  localStorage.setItem('geminiModel', document.getElementById('cfgModel').value.trim() || 'gemini-2.5-flash');
+  closeSettings();
+}
+
+function switchTab(tab) {
+  ['plan','workout','finish'].forEach(t => {
+    document.getElementById(`view-${t}`).classList.toggle('hidden', t !== tab);
+    document.getElementById(`tab-${t}`).classList.toggle('tab-active', t === tab);
+    document.getElementById(`tab-${t}`).classList.toggle('text-slate-400', t !== tab);
+  });
+  if (tab === 'finish') updateLoggedSummary();
+}
+
+async function callGemini(promptText, isJson = false, extraParts = []) {
+  const key = localStorage.getItem('geminiKey');
+  const model = localStorage.getItem('geminiModel') || 'gemini-2.5-flash';
+  if (!key) { openSettings(); throw new Error("Missing Gemini API Key"); }
+
+  const parts = [{ text: promptText }, ...extraParts];
+  const body = {
+    systemInstruction: { parts: [{ text: MASTER_PROMPT }] },
+    contents: [{ role: "user", parts }],
+    generationConfig: isJson ? { responseMimeType: "application/json" } : {}
+  };
+
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.candidates[0].content.parts[0].text;
+}
+
+async function fetchSheetHistory() {
+  const url = localStorage.getItem('scriptUrl');
+  const token = localStorage.getItem('secretToken');
+  if (!url) return;
+  const res = await fetch(`${url}?token=${encodeURIComponent(token)}`);
+  sheetContext = await res.json();
+}
+
+async function generateWorkout() {
+  const btn = document.getElementById('btnGenerate');
+  btn.disabled = true;
+  btn.innerText = "Syncing Sheet & Asking Coach...";
+  try {
+    await fetchSheetHistory();
+    const prompt = `Today is ${days[today.getDay()]}, ${today.toISOString().split('T')[0]} (Sunday-Saturday week).
+Pre-workout check-in:
+- Ankle pain: ${document.getElementById('preAnkle').value}/10
+- Lower Back L1/L2 pain: ${document.getElementById('preBack').value}/10
+- Morning ankle stiffness >15-20m: ${document.getElementById('preStiffness').value}
+- Location: ${document.getElementById('preLocation').value}
+- Notes: ${document.getElementById('preNotes').value}
+
+Recent Strength Logs (Archive_Log): ${JSON.stringify(sheetContext.logs?.slice(-30) || [])}
+Recent Sessions: ${JSON.stringify(sheetContext.sessions?.slice(-7) || [])}
+
+Generate today's workout strictly as JSON matching this schema:
+{
+  "title": "Week X, Day Y: ...",
+  "smartwatchMode": "Cross-training" or "Strength Training",
+  "sessionCapMinutes": 75,
+  "intro": "Brief overview referencing recent numbers",
+  "coachRules": ["Rule 1", "Rule 2"],
+  "rehabAndWarmup": [{"name": "...", "target": "3x12", "notes": "..."}],
+  "strength": [{"workout": "Flat Bench Press", "type": "Barbell", "unit": "kg", "sets": 3, "targetWeight": 57.5, "targetReps": 10, "notes": "..."}],
+  "engine": {
+    "title": "12-Min EMOM or 36-Min Intervals",
+    "capMinutes": 12,
+    "blocks": [{"time": "Min 1", "task": "16-18 Cal Assault Bike", "notes": "..."}]
+  },
+  "cooldown": [{"name": "Easy Bike + Stretches", "notes": "5-10 mins"}]
+}`;
+
+    const raw = await callGemini(prompt, true);
+    currentPlan = JSON.parse(raw);
+    renderPlan();
+  } catch (err) {
+    alert("Error: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "Sync Sheet & Generate Today's Session";
+  }
+}
+
+function renderPlan() {
+  document.getElementById('planOverview').classList.remove('hidden');
+  document.getElementById('badgeWatch').innerText = `⌚ ${currentPlan.smartwatchMode}`;
+  document.getElementById('badgeCap').innerText = `Cap: ${currentPlan.sessionCapMinutes} mins`;
+  document.getElementById('planTitle').innerText = currentPlan.title;
+  document.getElementById('planIntro').innerText = currentPlan.intro;
+  document.getElementById('planRules').innerHTML = (currentPlan.coachRules || []).map(r => `<li>${r}</li>`).join('');
+
+  // Render Player
+  document.getElementById('noWorkoutMsg').classList.add('hidden');
+  document.getElementById('workoutContent').classList.remove('hidden');
+
+  document.getElementById('rehabList').innerHTML = (currentPlan.rehabAndWarmup || []).map((item, idx) => `
+    <label class="flex items-start gap-3 bg-slate-900/70 p-2.5 rounded-lg border border-slate-700/70 cursor-pointer">
+      <input type="checkbox" class="mt-1 w-4 h-4 accent-emerald-500">
+      <div class="text-sm"><span class="font-semibold text-white">${item.name}</span> <span class="text-emerald-400">(${item.target})</span><div class="text-xs text-slate-400">${item.notes}</div></div>
+    </label>`).join('');
+
+  document.getElementById('strengthList').innerHTML = (currentPlan.strength || []).map((ex, exIdx) => {
+    let setsHtml = '';
+    for (let s = 1; s <= ex.sets; s++) {
+      const id = `ex${exIdx}-s${s}`;
+      setsHtml += `
+        <div id="row-${id}" class="flex items-center justify-between bg-slate-900/80 p-2 rounded-lg border border-slate-700/80 gap-2">
+          <span class="text-xs font-bold text-slate-400 w-8">S${s}</span>
+          <div class="flex items-center gap-1">
+            <button onclick="adj('${id}-w', -2.5)" class="bg-slate-800 px-2 py-1 rounded text-xs font-bold">-</button>
+            <input id="${id}-w" type="number" step="0.5" value="${ex.targetWeight}" class="w-14 text-center bg-slate-800 border border-slate-700 rounded py-1 text-sm font-bold text-white">
+            <span class="text-xs text-slate-400">${ex.unit}</span>
+            <button onclick="adj('${id}-w', 2.5)" class="bg-slate-800 px-2 py-1 rounded text-xs font-bold">+</button>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="adj('${id}-r', -1)" class="bg-slate-800 px-2 py-1 rounded text-xs font-bold">-</button>
+            <input id="${id}-r" type="number" value="${ex.targetReps}" class="w-11 text-center bg-slate-800 border border-slate-700 rounded py-1 text-sm font-bold text-white">
+            <span class="text-xs text-slate-400">rep</span>
+            <button onclick="adj('${id}-r', 1)" class="bg-slate-800 px-2 py-1 rounded text-xs font-bold">+</button>
+          </div>
+          <button id="btn-${id}" onclick="logSet('${id}', '${ex.workout.replace(/'/g,"\\'")}', '${ex.type}', '${ex.unit}')" class="bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">✓</button>
+        </div>`;
+    }
+    return `
+      <div class="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700 space-y-2">
+        <div>
+          <div class="font-bold text-white">${ex.workout} <span class="text-xs font-normal text-slate-400">(${ex.type})</span></div>
+          <div class="text-xs text-slate-400">${ex.notes}</div>
+        </div>
+        <div class="space-y-2">${setsHtml}</div>
+      </div>`;
+  }).join('');
+
+  // Engine
+  const eng = currentPlan.engine;
+  if (eng && eng.blocks && eng.blocks.length > 0) {
+    document.getElementById('engineSection').classList.remove('hidden');
+    document.getElementById('engineCapBadge').innerText = `Hard Cap: ${eng.capMinutes} min`;
+    engineCapSeconds = (eng.capMinutes || 12) * 60;
+    document.getElementById('engineDetails').innerHTML = `<div class="font-semibold text-white mb-1">${eng.title}</div>` +
+      eng.blocks.map(b => `<div class="bg-slate-900/70 p-2 rounded border border-slate-700/70"><span class="text-orange-400 font-bold">${b.time}:</span> ${b.task} <div class="text-xs text-slate-400">${b.notes}</div></div>`).join('');
+  } else {
+    document.getElementById('engineSection').classList.add('hidden');
+  }
+
+  document.getElementById('cooldownList').innerHTML = (currentPlan.cooldown || []).map(c => `
+    <label class="flex items-start gap-3 bg-slate-900/70 p-2.5 rounded-lg border border-slate-700/70 cursor-pointer">
+      <input type="checkbox" class="mt-1 w-4 h-4 accent-blue-500">
+      <div class="text-sm font-medium text-white">${c.name} <div class="text-xs text-slate-400">${c.notes}</div></div>
+    </label>`).join('');
+}
+
+function adj(inputId, delta) {
+  const el = document.getElementById(inputId);
+  el.value = Math.max(0, parseFloat(el.value || 0) + delta);
+}
+
+function logSet(id, workout, type, unit) {
+  const weight = parseFloat(document.getElementById(`${id}-w`).value);
+  const reps = parseInt(document.getElementById(`${id}-r`).value);
+  const date = today.toISOString().split('T')[0];
+
+  const existingIdx = loggedSets.findIndex(s => s.id === id);
+  const setObj = { id, date, workout, type, unit, weight, reps };
+  if (existingIdx >= 0) loggedSets[existingIdx] = setObj;
+  else loggedSets.push(setObj);
+
+  document.getElementById(`row-${id}`).classList.add('border-emerald-500', 'bg-emerald-950/30');
+  document.getElementById(`btn-${id}`).innerText = 'Logged';
+  startTimer(90, '90s Strength Rest');
+}
+
+function updateLoggedSummary() {
+  document.getElementById('loggedCount').innerText = loggedSets.length;
+  document.getElementById('loggedSummary').innerHTML = loggedSets.length === 0
+    ? 'No strength sets logged.'
+    : loggedSets.map(s => `• ${s.workout}: ${s.weight}${s.unit} × ${s.reps}`).join('<br>');
+}
+
+// Audio Beep & Vibrate
+function beep(times = 1) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    for (let i = 0; i < times; i++) {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime + i * 0.25);
+      osc.connect(ctx.destination);
+      osc.start(ctx.currentTime + i * 0.25);
+      osc.stop(ctx.currentTime + i * 0.25 + 0.15);
+    }
+    if (navigator.vibrate) navigator.vibrate([250, 100, 250]);
+  } catch (e) {}
+}
+
+// Rest Timer
+let restInterval = null, restSec = 0;
+function startTimer(seconds, label) {
+  clearInterval(restInterval);
+  restSec = seconds;
+  document.getElementById('restTimerLabel').innerText = label;
+  document.getElementById('restTimerBar').classList.remove('hidden');
+  updateRestDisplay();
+  restInterval = setInterval(() => {
+    restSec--;
+    updateRestDisplay();
+    if (restSec <= 0) {
+      clearInterval(restInterval);
+      beep(2);
+      document.getElementById('restTimerLabel').innerText = "TIME'S UP!";
+    }
+  }, 1000);
+}
+function addRestTime(s) { restSec += s; updateRestDisplay(); }
+function stopRestTimer() { clearInterval(restInterval); document.getElementById('restTimerBar').classList.add('hidden'); }
+function updateRestDisplay() {
+  const m = String(Math.floor(Math.max(0, restSec) / 60)).padStart(2, '0');
+  const s = String(Math.max(0, restSec) % 60).padStart(2, '0');
+  document.getElementById('restTimerClock').innerText = `${m}:${s}`;
+}
+
+// Engine Timer
+let engInterval = null, engElapsed = 0, engineCapSeconds = 720;
+function toggleEngineTimer() {
+  const btn = document.getElementById('btnEngineTimer');
+  if (engInterval) {
+    clearInterval(engInterval); engInterval = null; btn.innerText = 'Resume';
+  } else {
+    btn.innerText = 'Pause';
+    engInterval = setInterval(() => {
+      engElapsed++;
+      const m = String(Math.floor(engElapsed / 60)).padStart(2, '0');
+      const s = String(engElapsed % 60).padStart(2, '0');
+      document.getElementById('engineClock').innerText = `${m}:${s}`;
+      if (engElapsed % 60 === 0 && engElapsed < engineCapSeconds) beep(1);
+      if (engElapsed >= engineCapSeconds) {
+        clearInterval(engInterval); engInterval = null; btn.innerText = 'HARD STOP';
+        beep(3);
+      }
+    }, 1000);
+  }
+}
+function resetEngineTimer() {
+  clearInterval(engInterval); engInterval = null; engElapsed = 0;
+  document.getElementById('engineClock').innerText = '00:00';
+  document.getElementById('btnEngineTimer').innerText = 'Start';
+}
+
+// Images
+function handleImageUpload(event, type) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    const base64 = dataUrl.split(',')[1];
+    images[type] = { mimeType: file.type, data: base64 };
+    const imgEl = document.getElementById(`preview-${type}`);
+    imgEl.src = dataUrl;
+    imgEl.classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+// Finish & Sync
+async function finishAndAnalyze() {
+  const btn = document.getElementById('btnFinish');
+  btn.disabled = true;
+  btn.innerText = "Analyzing Images & Syncing Sheet...";
+  try {
+    const rpe = document.getElementById('postRpe').value;
+    const postBack = document.getElementById('postBack').value;
+    const postAnkle = document.getElementById('postAnkle').value;
+    const stiffness = document.getElementById('preStiffness').value;
+    const dateStr = today.toISOString().split('T')[0];
+
+    const extraParts = [];
+    if (images.zepp) extraParts.push({ inlineData: images.zepp });
+    if (images.erg) extraParts.push({ inlineData: images.erg });
+
+    const prompt = `Analyze Hany's completed workout on ${dateStr} (${days[today.getDay()]}).
+Logged Strength Sets: ${JSON.stringify(loggedSets)}
+Post-Workout Check-in: RPE ${rpe}/10, Back ${postBack}/10, Ankle ${postAnkle}/10, Morning Stiffness: ${stiffness}.
+Previous Sheet Logs: ${JSON.stringify(sheetContext.logs?.slice(-30) || [])}
+Previous Sessions: ${JSON.stringify(sheetContext.sessions?.slice(-7) || [])}
+
+Read any attached Amazfit Zepp screenshot and/or Concept2 Erg monitor photo carefully.
+Return strict JSON:
+{
+  "duration": "e.g. 1:02:50 or empty",
+  "avgHr": "e.g. 111",
+  "maxHr": "e.g. 167",
+  "load": "e.g. 45",
+  "kcal": "e.g. 496",
+  "ergSplits": "e.g. Row 1952m (2:15.5) or empty",
+  "aiSummary": "Full coaching analysis comparing volume shifts vs previous session, HR comparison, and next-session guidance."
+}`;
+
+    const raw = await callGemini(prompt, true, extraParts);
+    const result = JSON.parse(raw);
+
+    // Sync to Google Sheet
+    const url = localStorage.getItem('scriptUrl');
+    const token = localStorage.getItem('secretToken');
+    if (url) {
+      await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          token,
+          sets: loggedSets,
+          session: {
+            date: dateStr,
+            weekDay: days[today.getDay()],
+            smartwatchMode: currentPlan?.smartwatchMode || "Cross-training",
+            rpe,
+            backPain: postBack,
+            anklePain: postAnkle,
+            morningStiffness: stiffness,
+            duration: result.duration,
+            avgHr: result.avgHr,
+            maxHr: result.maxHr,
+            load: result.load,
+            kcal: result.kcal,
+            ergSplits: result.ergSplits,
+            aiSummary: result.aiSummary
+          }
+        })
+      });
+    }
+
+    document.getElementById('aiReviewBox').classList.remove('hidden');
+    document.getElementById('aiReviewText').innerText = result.aiSummary;
+    chatMsgs.push({ role: "Coach", text: result.aiSummary });
+    alert("✅ Synced to Google Sheet & Analysis Complete!");
+  } catch (err) {
+    alert("Error: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "Finish, Sync to Sheet & Analyze";
+  }
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  const box = document.getElementById('chatHistory');
+  box.innerHTML += `<div class="bg-blue-950/60 p-2.5 rounded-lg border border-blue-800/60"><b>You:</b> ${msg}</div>`;
+  try {
+    const reply = await callGemini(`Context - Current Plan: ${JSON.stringify(currentPlan)}. Recent Logs: ${JSON.stringify(loggedSets)}. Previous chat: ${JSON.stringify(chatMsgs.slice(-4))}.\n\nHany asks: ${msg}`, false);
+    chatMsgs.push({ role: "Hany", text: msg }, { role: "Coach", text: reply });
+    box.innerHTML += `<div class="bg-slate-900 p-2.5 rounded-lg border border-slate-700 whitespace-pre-wrap"><b>Coach:</b> ${reply}</div>`;
+    box.scrollTop = box.scrollHeight;
+  } catch (err) {
+    box.innerHTML += `<div class="text-red-400 text-xs">Error: ${err.message}</div>`;
+  }
+}
+</script>
+</body>
+</html>
